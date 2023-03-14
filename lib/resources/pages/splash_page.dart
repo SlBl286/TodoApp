@@ -27,7 +27,7 @@ class _SplashPageState extends NyState<SplashPage> {
       if (ThemeColor.get(context).isDarkTheme) {
         NyTheme.set(context, id: ThemeConfig.dark().id);
       }
-      routeTo(HomePage().route);
+      routeTo(HomePage().route, navigationType: NavigationType.pushReplace);
     });
   }
 

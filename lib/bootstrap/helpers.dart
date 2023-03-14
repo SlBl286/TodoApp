@@ -34,7 +34,7 @@ class ThemeColor {
 
 extension GetStringWeekDay on DateTime {
   String getWeekDayWithoutToday() {
-    switch (weekday) {
+    switch (this.weekday) {
       case DateTime.monday:
         return "Thứ hai";
       case DateTime.tuesday:

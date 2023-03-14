@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/app/constants/dropdown_data.dart';
+import 'package:flutter_app/app/models/task.dart';
 import 'package:flutter_app/bootstrap/helpers.dart';
+import 'package:flutter_app/resources/widgets/add_button_widget.dart';
 import 'package:flutter_app/resources/widgets/generic_input_widget.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -16,23 +19,18 @@ class AddTaskPage extends NyStatefulWidget {
 }
 
 class _AddTaskPageState extends NyState<AddTaskPage> {
+  TextEditingController _titleController = TextEditingController();
+  TextEditingController _noteController = TextEditingController();
+
   DateTime _seletecDate = DateTime.now();
-  DateTime _startTime = DateTime.now();
-  DateTime _endTime = DateTime.now();
+  DateTime _startTime =
+      DateTime(0, 0, 0, DateTime.now().hour, DateTime.now().minute);
+  DateTime _endTime =
+      DateTime(0, 0, 0, DateTime.now().hour, DateTime.now().minute);
   int _selectedRemind = 5;
   String _selectedRepeat = "Không";
-  List<int> remindList = [
-    5,
-    10,
-    15,
-    20,
-  ];
-  List<String> repeatList = [
-    "Không",
-    "Hàng ngày",
-    "Hàng tuần",
-    "Hàng tháng",
-  ];
+
+  int _selectedColor = 0;
   @override
   init() async {
     super.init();
@@ -112,8 +110,16 @@ class _AddTaskPageState extends NyState<AddTaskPage> {
                 color: ThemeColor.get(context).primaryContent,
               ),
             ),
-            GenericInput(title: "Tiêu đề", hint: "Nhập tiêu đề"),
-            GenericInput(title: "Ghi chú", hint: "Nhập ghi chú"),
+            GenericInput(
+              title: "Tiêu đề",
+              hint: "Nhập tiêu đề",
+              controller: _titleController,
+            ),
+            GenericInput(
+              title: "Ghi chú",
+              hint: "Nhập ghi chú",
+              controller: _noteController,
+            ),
             GenericInput(
               title: "Ngày",
               hint: DateFormat("dd/MM/yyyy").format(_seletecDate),
@@ -178,7 +184,8 @@ class _AddTaskPageState extends NyState<AddTaskPage> {
                   color: ThemeColor.get(context).primaryContent,
                 ),
                 underline: Container(),
-                items: remindList.map<DropdownMenuItem<String>>((value) {
+                items: DropdownData.remindList
+                    .map<DropdownMenuItem<String>>((value) {
                   return DropdownMenuItem<String>(
                     value: value.toString(),
                     child: Text("$value"),
@@ -207,7 +214,8 @@ class _AddTaskPageState extends NyState<AddTaskPage> {
                   color: ThemeColor.get(context).primaryContent,
                 ),
                 underline: Container(),
-                items: repeatList.map<DropdownMenuItem<String>>((value) {
+                items: DropdownData.repeatList
+                    .map<DropdownMenuItem<String>>((value) {
                   return DropdownMenuItem<String>(
                     value: value.toString(),
                     child: Text("$value"),
@@ -220,23 +228,123 @@ class _AddTaskPageState extends NyState<AddTaskPage> {
                 },
               ),
             ),
+            Container(
+              margin: EdgeInsets.only(top: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _colorPalate(),
+                  AddButton(
+                    label: "Tạo Task",
+                    onTap: () async {
+                      if (_validateForm()) {
+                        int inserted = await widget.controller.addTask(
+                          Task(
+                            title: _titleController.text,
+                            note: _noteController.text,
+                            color: _selectedColor,
+                            date: DateFormat("dd/MM/yyyy").format(_seletecDate),
+                            startTime: DateFormat("hh:mm a").format(_startTime),
+                            endTime: DateFormat("hh:mm a").format(_endTime),
+                            remind: _selectedRemind,
+                            repeat: _selectedRepeat,
+                            isCompleted: 0,
+                          ),
+                        );
+                        pop(result: inserted);
+                      }
+                    },
+                  )
+                ],
+              ),
+            )
           ],
         ),
       ),
     );
   }
 
+  Widget _colorPalate() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Màu",
+          style: GoogleFonts.lato(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: ThemeColor.get(context).primaryContent,
+          ),
+        ),
+        SizedBox(
+          height: 8,
+        ),
+        Wrap(
+          children: List<Widget>.generate(3, (index) {
+            return GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () {
+                setState(() {
+                  _selectedColor = index;
+                });
+              },
+              child: Padding(
+                padding: EdgeInsets.only(right: 8.0),
+                child: CircleAvatar(
+                  radius: 12,
+                  backgroundColor: DropdownData.colorList[index],
+                  child: _selectedColor == index
+                      ? Container(
+                          child: Icon(
+                            Icons.done,
+                            color: Colors.white,
+                            size: 15,
+                          ),
+                        )
+                      : Container(),
+                ),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  bool _validateForm() {
+    if (_titleController.text.isEmpty || _noteController.text.isEmpty) {
+      showToast(
+        style: ToastNotificationStyleType.DANGER,
+        title: "Chưa nhập đủ thông tin",
+        description: "Phải nhập đủ các trường thông tin",
+      );
+      return false;
+    } else if (_startTime.compareTo(_endTime) > 0) {
+      showToast(
+        style: ToastNotificationStyleType.DANGER,
+        title: "Lỗi thời gian",
+        description:
+            "Thời gian bắt đầu phải nhỏ hơn hoặc bằng thời gian kết thúc",
+      );
+      return false;
+    }
+    return true;
+  }
+
   _getDateFromUser() async {
     DateTime? _pickerDate = await showDatePicker(
-        context: context,
-        initialDate: DateTime.now(),
-        firstDate: DateTime.now(),
-        lastDate: DateTime(DateTime.now().year + 10));
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(DateTime.now().year + 10),
+      locale: Locale("vi")
+    );
 
     if (_pickerDate != null)
       setState(() {
         _seletecDate = _pickerDate;
       });
+    
   }
 
   _getTimeFromUser({bool isStartTime = true}) async {
